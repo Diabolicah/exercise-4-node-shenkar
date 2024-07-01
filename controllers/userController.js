@@ -24,7 +24,7 @@ exports.userController = {
                 access_token: access_code
             });
         } catch (error) {
-            res.status(500).json(error);
+            res.status(500).json({error: error.message});
         } finally {
             await connection.end();
         }

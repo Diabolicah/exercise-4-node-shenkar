@@ -4,6 +4,7 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 const { userRouter } = require('./routers/userRouter');
+const { preferencesRouter } = require('./routers/preferencesRouter');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -17,9 +18,10 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/user', userRouter);
+app.use('/api/preferences', preferencesRouter);
 
 app.use((req, res) => {
-    res.status(404).json({ error: 'Not found' });
+    res.status(400).json({ error: 'API Not Found' });
 });
 
 app.listen(port, () => {
