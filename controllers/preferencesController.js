@@ -1,6 +1,7 @@
 const { dbConnection } = require('../db_connection');
 const TABLE_USERS_NAME = "tbl_28_users";
 const TABLE_PREFERENCES_NAME = "tbl_28_preferences";
+const MILLISECONDS_IN_A_DAY = 1000 * 60 * 60 * 24;
 
 const { vacation_destinations } = require('../data/vacation_destination.json');
 const { vacation_types } = require('../data/vacation_types.json');
@@ -35,7 +36,7 @@ exports.preferencesController = {
         }
     },
 
-    async addPreferences(req, res) {
+    async addPreference(req, res) {
         const { username } = req.params;
         const { access_code, start_date, end_date, destination, vacation_type } = req.body;
 
@@ -61,6 +62,11 @@ exports.preferencesController = {
             return res.status(400).json({ error: 'End date cannot be before the start date' });
         }
 
+        const duration = (Date.parse(end_date) - Date.parse(start_date)) / (MILLISECONDS_IN_A_DAY);
+        if (duration > 7) {
+            return res.status(400).json({ error: 'Vacation duration cannot be more than a week' });
+        }
+
         if (!vacation_destinations.includes(destination)) {
             return res.status(400).json({ 
                 error: 'Invalid destination',
@@ -78,7 +84,7 @@ exports.preferencesController = {
         const connection = await dbConnection.createConnection();
 
         try {
-            const [rows] = await connection.execute(`SELECT * FROM ${TABLE_USERS_NAME} WHERE user_name = ?`, [username]);
+            const [rows] = await connection.execute(`SELECT id, user_access_code FROM ${TABLE_USERS_NAME} WHERE user_name = ?`, [username]);
             if (rows.length === 0) {
                 return res.status(404).json({error: `User with username (${username}) not found`});
             }
