@@ -42,7 +42,7 @@ exports.userController = {
 
             res.status(201).json({
                 message: 'User registered successfully',
-                access_token: access_code
+                access_code: access_code
             });
         } catch (error) {
             res.status(500).json({error: error.message});
