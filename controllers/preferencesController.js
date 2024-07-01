@@ -22,7 +22,7 @@ exports.preferencesController = {
         try {
             const [rows] = await connection.execute(`SELECT ${TABLE_PREFERENCES_NAME}.id, start_date, end_date, destination, vacation_type FROM ${TABLE_USERS_NAME} inner join ${TABLE_PREFERENCES_NAME} on ${TABLE_USERS_NAME}.id = ${TABLE_PREFERENCES_NAME}.user_id WHERE user_name = ?`, [req.params.username]);
             if (rows.length === 0) {
-                return res.status(404).json({error: `Preferences for username (${req.params.username}) Not found`});
+                return res.status(404).json({error: `Preferences for username (${req.params.username}) not found`});
             }
             res.status(200).json(rows[0]);
         } catch (error) {
