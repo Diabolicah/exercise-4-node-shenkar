@@ -104,9 +104,7 @@ exports.preferencesController = {
             }
 
             res.status(201).json({
-                message: 'Preferences added successfully',
-                user_id: user_id,
-                preference_id: insertedRow.insertId
+                message: 'Preferences added successfully'
             });
         } catch (error) {
             res.status(500).json({error: error.message});
@@ -184,10 +182,49 @@ exports.preferencesController = {
 
             res.status(200).json({
                 message: 'Preferences updated successfully',
-                user_id: user_id
             });
         }
         catch (error) {
+            res.status(500).json({error: error.message});
+        } finally {
+            await connection.end();
+        }
+    },
+
+    async calculateVacationDestination(req, res) {
+        const connection = await dbConnection.createConnection();
+
+        try {
+            const [preferences] = await connection.execute(`SELECT * FROM ${TABLE_PREFERENCES_NAME}`);
+            if (preferences.length < 5) {
+                return res.status(404).json({error: 'Not all 5 users have added their preferences yet'});
+            }
+
+            const [destinationResult] = await connection.execute(`select destination from ${TABLE_PREFERENCES_NAME} group by destination order by count(destination) desc, MIN(id) ASC limit 1;`);
+            const destination = destinationResult[0].destination;
+
+            const [vacationTypeResult] = await connection.execute(`select vacation_type from ${TABLE_PREFERENCES_NAME} group by vacation_type order by count(vacation_type) desc, MIN(id) ASC limit 1;`);
+            const vacationType = vacationTypeResult[0].vacation_type;
+
+            const [startDateResult] = await connection.execute(`select start_date from ${TABLE_PREFERENCES_NAME} order by start_date DESC limit 1;`);
+            const startDate = Date.parse(startDateResult[0].start_date);
+
+            const [endDateResult] = await connection.execute(`select end_date from ${TABLE_PREFERENCES_NAME} order by end_date ASC limit 1;`);
+            const endDate = Date.parse(endDateResult[0].end_date);
+
+            const duration = (endDate - startDate) / (MILLISECONDS_IN_A_DAY);
+            if (duration > 7) {
+                return res.status(400).json({ error: "Couldn't find suitable date for everyone." });
+            }
+
+            res.status(200).json({
+                message: "Vacation destination calculated successfully",
+                destination: destination,
+                vacation_type: vacationType,
+                start_date: new Date(startDate).toLocaleDateString(),
+                endDate: new Date(endDate).toLocaleDateString()
+            });
+        } catch (error) {
             res.status(500).json({error: error.message});
         } finally {
             await connection.end();
