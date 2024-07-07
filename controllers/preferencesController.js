@@ -37,7 +37,6 @@ exports.preferencesController = {
     },
 
     async addPreference(req, res) {
-        const { username } = req.params;
         const { access_code, start_date, end_date, destination, vacation_type } = req.body;
 
         if (!access_code || !start_date || !end_date || !destination || !vacation_type) {
@@ -45,14 +44,14 @@ exports.preferencesController = {
         }
 
         if (isNaN(Date.parse(start_date))) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid start date format',
                 valid_date_format: 'YYYY-MM-DD'
             });
         }
 
         if (isNaN(Date.parse(end_date))) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid start date format',
                 valid_date_format: 'YYYY-MM-DD'
             });
@@ -68,14 +67,14 @@ exports.preferencesController = {
         }
 
         if (!vacation_destinations.includes(destination)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid destination',
                 available_destinations: vacation_destinations
             });
         }
 
         if (!vacation_types.includes(vacation_type)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid vacation type',
                 available_vacation_types: vacation_types
             });
@@ -84,9 +83,9 @@ exports.preferencesController = {
         const connection = await dbConnection.createConnection();
 
         try {
-            const [rows] = await connection.execute(`SELECT id, user_access_code FROM ${TABLE_USERS_NAME} WHERE user_name = ?`, [username]);
+            const [rows] = await connection.execute(`SELECT id, user_access_code FROM ${TABLE_USERS_NAME} WHERE user_access_code = ?`, [access_code]);
             if (rows.length === 0) {
-                return res.status(404).json({error: `User with username (${username}) not found`});
+                return res.status(404).json({error: `User with access code (${access_code}) not found`});
             }
 
             if (rows[0].user_access_code != access_code) {
@@ -94,6 +93,11 @@ exports.preferencesController = {
             }
 
             const user_id = rows[0].id;
+            const [existingPreferences] = await connection.execute(`SELECT * FROM ${TABLE_PREFERENCES_NAME} WHERE user_id = ?`, [user_id]);
+            if (existingPreferences.length > 0) {
+                return res.status(400).json({error: 'User has already added a preference'});
+            }
+
             const [insertedRow] = await connection.execute(`INSERT INTO ${TABLE_PREFERENCES_NAME} (user_id, start_date, end_date, destination, vacation_type) VALUES (?, DATE(?), DATE(?), ?, ?)`, [user_id, start_date, end_date, destination, vacation_type]);
             if (insertedRow.affectedRows === 0) {
                 return res.status(500).json({ error: 'Internal server error at add preferences' });
@@ -110,4 +114,83 @@ exports.preferencesController = {
             await connection.end();
         }
     },
+
+    async updatePreference(req, res) {
+        const { access_code, start_date, end_date, destination, vacation_type } = req.body;
+
+        if (!access_code || !start_date || !end_date || !destination || !vacation_type) {
+            return res.status(400).json({ error: `Please provide all the required fields { access_code, start_date, end_date, destination, vacation_type}` });
+        }
+
+        if (isNaN(Date.parse(start_date))) {
+            return res.status(400).json({
+                error: 'Invalid start date format',
+                valid_date_format: 'YYYY-MM-DD'
+            });
+        }
+
+        if (isNaN(Date.parse(end_date))) {
+            return res.status(400).json({
+                error: 'Invalid start date format',
+                valid_date_format: 'YYYY-MM-DD'
+            });
+        }
+
+        if (Date.parse(end_date) < Date.parse(start_date)) {
+            return res.status(400).json({ error: 'End date cannot be before the start date' });
+        }
+
+        const duration = (Date.parse(end_date) - Date.parse(start_date)) / (MILLISECONDS_IN_A_DAY);
+        if (duration > 7) {
+            return res.status(400).json({ error: 'Vacation duration cannot be more than a week' });
+        }
+
+        if (!vacation_destinations.includes(destination)) {
+            return res.status(400).json({
+                error: 'Invalid destination',
+                available_destinations: vacation_destinations
+            });
+        }
+
+        if (!vacation_types.includes(vacation_type)) {
+            return res.status(400).json({
+                error: 'Invalid vacation type',
+                available_vacation_types: vacation_types
+            });
+        }
+
+        const connection = await dbConnection.createConnection();
+
+        try {
+            const [rows] = await connection.execute(`SELECT id, user_access_code FROM ${TABLE_USERS_NAME} WHERE user_access_code = ?`, [access_code]);
+            if (rows.length === 0) {
+                return res.status(404).json({error: `User with access code (${access_code}) not found`});
+            }
+
+            if (rows[0].user_access_code != access_code) {
+                return res.status(401).json({error: 'Invalid access code'});
+            }
+
+            const user_id = rows[0].id;
+            const [existingPreferences] = await connection.execute(`SELECT * FROM ${TABLE_PREFERENCES_NAME} WHERE user_id = ?`, [user_id]);
+            if (existingPreferences.length === 0) {
+                return res.status(404).json({error: 'User has not added a preference yet'});
+            }
+
+            const [updatedRow] = await connection.execute(`UPDATE ${TABLE_PREFERENCES_NAME} SET start_date = DATE(?), end_date = DATE(?), destination = ?, vacation_type = ? WHERE user_id = ?`, [start_date, end_date, destination, vacation_type, user_id]);
+            if (updatedRow.affectedRows === 0) {
+                return res.status(500).json({ error: 'Internal server error at update preferences' });
+            }
+
+            res.status(200).json({
+                message: 'Preferences updated successfully',
+                user_id: user_id
+            });
+        }
+        catch (error) {
+            res.status(500).json({error: error.message});
+        } finally {
+            await connection.end();
+        }
+    }
 };
