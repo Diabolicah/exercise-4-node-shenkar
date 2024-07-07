@@ -33,7 +33,6 @@ exports.userController = {
         const connection = await dbConnection.createConnection();
 
         try {
-            // Check if user already exists
             const [usernames] = await connection.execute(`SELECT * FROM ${TABLE_NAME} WHERE user_name = ?`, [username]);
             if (usernames.length > 0) {
                 return res.status(400).json({ error: 'Username already exists' });
