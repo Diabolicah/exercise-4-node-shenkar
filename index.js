@@ -17,7 +17,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/api/user', userRouter);
+app.use('/api/users', userRouter);
 app.use('/api/preferences', preferencesRouter);
 
 app.use((req, res) => {
