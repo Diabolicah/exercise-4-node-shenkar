@@ -52,7 +52,7 @@ exports.preferencesController = {
 
         if (isNaN(Date.parse(end_date))) {
             return res.status(400).json({
-                error: 'Invalid start date format',
+                error: 'Invalid end date format',
                 valid_date_format: 'YYYY-MM-DD'
             });
         }
@@ -129,7 +129,7 @@ exports.preferencesController = {
 
         if (isNaN(Date.parse(end_date))) {
             return res.status(400).json({
-                error: 'Invalid start date format',
+                error: 'Invalid end date format',
                 valid_date_format: 'YYYY-MM-DD'
             });
         }
@@ -213,7 +213,7 @@ exports.preferencesController = {
             const endDate = Date.parse(endDateResult[0].end_date);
 
             const duration = (endDate - startDate) / (MILLISECONDS_IN_A_DAY);
-            if (duration > 7) {
+            if (duration > 7 || duration < 0) {
                 return res.status(400).json({ error: "Couldn't find suitable date for everyone." });
             }
 
